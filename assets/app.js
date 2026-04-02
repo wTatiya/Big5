@@ -189,32 +189,67 @@
   }
 
   /**
-   * @returns {Record<string, number>}
+   * @param {unknown} v
+   * @returns {number | null}
    */
-  function loadAnswers() {
+  function parseStoredAge(v) {
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    const a = Math.round(v);
+    if (a < 1 || a > 120) return null;
+    return a;
+  }
+
+  /**
+   * @returns {{ answers: Record<string, number>, age: number | null }}
+   */
+  function loadPersisted() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return {};
+      if (!raw) return { answers: {}, age: null };
       const data = JSON.parse(raw);
-      if (!data || typeof data !== "object") return {};
-      return /** @type {Record<string, number>} */ (data);
+      if (!data || typeof data !== "object") return { answers: {}, age: null };
+
+      if (typeof data.answers === "object" && data.answers !== null && !Array.isArray(data.answers)) {
+        /** @type {Record<string, number>} */
+        const answers = {};
+        for (const [k, v] of Object.entries(data.answers)) {
+          if (typeof v === "number" && v >= 1 && v <= 5) answers[k] = v;
+        }
+        return { answers, age: parseStoredAge(data.age) };
+      }
+
+      /** @type {Record<string, number>} */
+      const answers = {};
+      let age = null;
+      for (const [k, v] of Object.entries(data)) {
+        if (k === "age") {
+          age = parseStoredAge(v);
+          continue;
+        }
+        if (typeof v === "number" && v >= 1 && v <= 5) answers[k] = v;
+      }
+      return { answers, age };
     } catch {
-      return {};
+      return { answers: {}, age: null };
     }
   }
 
   /**
    * @param {Record<string, number>} answers
+   * @param {number | null} age
    */
-  function saveAnswers(answers) {
+  function savePersisted(answers, age) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+      /** @type {Record<string, unknown>} */
+      const payload = { ...answers };
+      if (age != null) payload.age = age;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // ignore
     }
   }
 
-  function clearAnswers() {
+  function clearPersisted() {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -452,9 +487,11 @@
    * @param {QuizItem[]} items
    */
   function buildQuizUI(quizMount, items) {
-    const stored = loadAnswers();
+    const persisted = loadPersisted();
     /** @type {Record<string, number>} */
-    const answers = { ...stored };
+    const answers = { ...persisted.answers };
+    /** @type {number | null} */
+    let storedAge = persisted.age;
 
     const sheet = document.createElement("div");
     sheet.className = "nbk-sheet";
@@ -488,6 +525,39 @@
 
     const progress = buildProgressDots(sheet, items.length);
     header?.appendChild(progress);
+
+    const ageWrap = document.createElement("div");
+    ageWrap.className = "nbk-q nbk-age";
+    ageWrap.setAttribute("role", "group");
+    ageWrap.setAttribute("aria-labelledby", "nbk-age-label");
+    const ageVal = storedAge != null ? String(storedAge) : "";
+    ageWrap.innerHTML = `
+      <div class="nbk-q-head" id="nbk-age-label">
+        <span class="nbk-qno nbk-qno--meta" aria-hidden="true">·</span>
+        <span class="nbk-qtext">อายุของคุณ (ปี)</span>
+      </div>
+      <p class="nbk-likert-legend">ระบุอายุเป็นจำนวนเต็ม 1–120 ปี (จำเป็นต้องกรอกก่อนส่งผล)</p>
+      <div class="nbk-age-field">
+        <label class="nbk-age-label" for="nbk-age-input">อายุ</label>
+        <input id="nbk-age-input" name="participant_age" type="number" inputmode="numeric" min="1" max="120" step="1" class="nbk-age-input" placeholder="เช่น 32" value="${escapeHtml(ageVal)}" />
+      </div>`;
+    grid.prepend(ageWrap);
+
+    const ageInput = /** @type {HTMLInputElement} */ (ageWrap.querySelector("#nbk-age-input"));
+
+    function readAgeFromDom() {
+      const raw = ageInput.value.trim();
+      if (raw === "") return null;
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1 || n > 120) return null;
+      return n;
+    }
+
+    ageInput.addEventListener("input", () => {
+      storedAge = readAgeFromDom();
+      savePersisted(answers, storedAge);
+      update();
+    });
 
     for (let i = 0; i < items.length; i++) {
       const qNum = i + 1;
@@ -534,7 +604,7 @@
         if (t.name !== item.id) return;
         const v = Number(t.value);
         if (v >= 1 && v <= 5) answers[item.id] = v;
-        saveAnswers(answers);
+        savePersisted(answers, storedAge);
         update();
       });
     }
@@ -573,7 +643,9 @@
       const action = btn.getAttribute("data-action");
       if (action === "reset") {
         for (const it of items) delete answers[it.id];
-        clearAnswers();
+        storedAge = null;
+        ageInput.value = "";
+        clearPersisted();
         for (const input of Array.from(sheet.querySelectorAll('input[type="radio"]'))) {
           /** @type {HTMLInputElement} */ (input).checked = false;
         }
@@ -583,6 +655,13 @@
       if (action === "send") {
         if (!isComplete()) {
           flashStatus(resultsEl, "กรุณาตอบให้ครบ 20 ข้อก่อนส่ง");
+          return;
+        }
+
+        const ageForSend = readAgeFromDom();
+        if (ageForSend == null) {
+          flashStatus(resultsEl, "กรุณาระบุอายุ (1–120 ปี) ให้ถูกต้องก่อนส่ง");
+          ageInput.focus();
           return;
         }
 
@@ -606,6 +685,7 @@
             big5_score_e: sums.E,
             big5_score_a: sums.A,
             big5_score_n: sums.N,
+            age: ageForSend,
             answers: { ...answers },
           };
           const sent = await submitFn(row);

@@ -20,6 +20,21 @@ var SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
 /** Tab name; created if missing */
 var SHEET_NAME = "Big5Submissions";
 
+/** Column order must match {@link doPost} {@code appendRow} (9 columns). */
+var WEBHOOK_HEADER_ROW_ = [
+  "submitted_at",
+  "result_summary",
+  "big5_o",
+  "big5_c",
+  "big5_e",
+  "big5_a",
+  "big5_n",
+  "answers_json",
+  "age",
+];
+
+var WEBHOOK_HEADER_COL_COUNT_ = 9;
+
 /**
  * @param {GoogleAppsScript.Events.DoPost} e
  * @returns {GoogleAppsScript.Content.TextOutput}
@@ -61,6 +76,7 @@ function doPost(e) {
       num_(data.big5_score_a),
       num_(data.big5_score_n),
       answersJson,
+      num_(data.age),
     ]);
 
     return jsonOut_({ ok: true });
@@ -73,21 +89,19 @@ function doPost(e) {
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  */
 function ensureHeader_(sheet) {
-  var first = sheet.getRange(1, 1, 1, 8).getValues()[0];
-  if (String(first[0]) === "submitted_at") {
+  var first = sheet.getRange(1, 1, 1, WEBHOOK_HEADER_COL_COUNT_).getValues()[0];
+
+  if (String(first[0]).trim() === "submitted_at") {
+    // Legacy sheets had 8 columns; appendRow now writes 9 (age last). Fill missing header only.
+    var col9 = String(first[8]).trim();
+    if (col9 === "") {
+      sheet.getRange(1, 9).setValue("age");
+    }
     return;
   }
+
   if (first.join("") === "") {
-    sheet.getRange(1, 1, 1, 8).setValues([[
-      "submitted_at",
-      "result_summary",
-      "big5_o",
-      "big5_c",
-      "big5_e",
-      "big5_a",
-      "big5_n",
-      "answers_json",
-    ]]);
+    sheet.getRange(1, 1, 1, WEBHOOK_HEADER_COL_COUNT_).setValues([WEBHOOK_HEADER_ROW_]);
   }
 }
 
