@@ -1,5 +1,5 @@
 /**
- * DISC quiz webhook — append each submission as a row in Google Sheets.
+ * Big Five (20-item Likert) quiz webhook — append each submission as a row in Google Sheets.
  *
  * Setup:
  * 1. Create a Google Sheet (or pick an existing one). Copy its ID from the URL:
@@ -16,9 +16,9 @@
  */
 
 /** @type {string} */
-var SPREADSHEET_ID = "1PbaZxoj_HwnUGeIiMTN2kzCquAilMtFK4skOfV_JUWM";
+var SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
 /** Tab name; created if missing */
-var SHEET_NAME = "DiscSubmissions";
+var SHEET_NAME = "Big5Submissions";
 
 /**
  * @param {GoogleAppsScript.Events.DoPost} e
@@ -55,14 +55,11 @@ function doPost(e) {
     sheet.appendRow([
       data.submitted_at || "",
       data.result_summary || "",
-      num_(data.disc_score_d),
-      num_(data.disc_score_i),
-      num_(data.disc_score_s),
-      num_(data.disc_score_c),
-      num_(data.raw_choice_a),
-      num_(data.raw_choice_b),
-      num_(data.raw_choice_c),
-      num_(data.raw_choice_d),
+      num_(data.big5_score_o),
+      num_(data.big5_score_c),
+      num_(data.big5_score_e),
+      num_(data.big5_score_a),
+      num_(data.big5_score_n),
       answersJson,
     ]);
 
@@ -76,22 +73,19 @@ function doPost(e) {
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  */
 function ensureHeader_(sheet) {
-  var first = sheet.getRange(1, 1, 1, 11).getValues()[0];
+  var first = sheet.getRange(1, 1, 1, 8).getValues()[0];
   if (String(first[0]) === "submitted_at") {
     return;
   }
   if (first.join("") === "") {
-    sheet.getRange(1, 1, 1, 11).setValues([[
+    sheet.getRange(1, 1, 1, 8).setValues([[
       "submitted_at",
       "result_summary",
-      "disc_score_d",
-      "disc_score_i",
-      "disc_score_s",
-      "disc_score_c",
-      "raw_choice_a",
-      "raw_choice_b",
-      "raw_choice_c",
-      "raw_choice_d",
+      "big5_o",
+      "big5_c",
+      "big5_e",
+      "big5_a",
+      "big5_n",
       "answers_json",
     ]]);
   }

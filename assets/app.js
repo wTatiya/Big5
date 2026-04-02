@@ -1,201 +1,134 @@
-// /mnt/data/dics-main/assets/app.js
-// Purpose: Enhance the static DISC questionnaire into an interactive, auto-scoring notebook-style UI (GitHub Pages friendly).
+// Big Five (20-item Likert) — interactive notebook UI for GitHub Pages.
 (() => {
   "use strict";
 
-  /** @typedef {"A"|"B"|"C"|"D"} ChoiceLetter */
-  /** @typedef {"D"|"i"|"S"|"C"} DiscLetter */
+  /** @typedef {"O"|"C"|"E"|"A"|"N"} TraitKey */
 
-  const CHOICE_TO_DISC = /** @type {const} */ ({
-    A: "D",
-    B: "i",
-    C: "S",
-    D: "C",
-  });
+  /**
+   * @typedef {{ id: string, trait: TraitKey, text: string, reverse: boolean }} QuizItem
+   */
 
-  const QUESTION_SCORING = /** @type {const} */ ([
-    { A: "C", B: "i", C: "D", D: "S" },
-    { A: "C", B: "S", C: "D", D: "i" },
-    { A: "S", B: "C", C: "D", D: "i" },
-    { A: "i", B: "C", C: "D", D: "S" },
-    { A: "i", B: "D", C: "C", D: "S" },
-    { A: "S", B: "C", C: "D", D: "i" },
-    { A: "i", B: "C", C: "D", D: "S" },
-    { A: "C", B: "i", C: "D", D: "S" },
-    { A: "i", B: "S", C: "D", D: "C" },
-    { A: "C", B: "S", C: "D", D: "i" },
-    { A: "S", B: "C", C: "i", D: "D" },
-    { A: "C", B: "S", C: "D", D: "i" },
-    { A: "S", B: "C", C: "i", D: "D" },
-    { A: "C", B: "i", C: "S", D: "D" },
-    { A: "S", B: "C", C: "D", D: "i" },
-    { A: "S", B: "C", C: "i", D: "D" },
-    { A: "C", B: "S", C: "D", D: "i" },
-    { A: "C", B: "D", C: "i", D: "S" },
-    { A: "C", B: "S", C: "i", D: "D" },
-    { A: "C", B: "S", C: "i", D: "D" },
-    { A: "i", B: "D", C: "C", D: "S" },
-    { A: "S", B: "C", C: "i", D: "D" },
-    { A: "C", B: "S", C: "i", D: "D" },
-    { A: "C", B: "S", C: "i", D: "D" },
+  const ITEMS = /** @type {const} */ ([
+    { id: "q1", trait: "O", text: "ฉันมีความยินดี และพร้อมที่จะเรียนรู้ ปรับเปลี่ยน แนวปฏิบัติ นวัตกรรมใหม่ๆ และพร้อมรับการเปลี่ยนแปลงระบบการทำงานในโรงพยาบาลอยู่เสมอ", reverse: false },
+    { id: "q2", trait: "O", text: "ฉันสามารถเปิดใจยอมรับและเคารพค่านิยม ตลอดจนความเชื่อทางศาสนาหรือวัฒนธรรมที่แตกต่างกันของผู้ป่วยได้ แม้ฉันจะไม่เข้าใจ", reverse: false },
+    { id: "q3", trait: "O", text: "เมื่อเจอปัญหาในวอร์ด ฉันมักจะมีความคิดริเริ่มสร้างสรรค์ในการหาวิธีการแก้ไขปัญหา หรือปรับปรุงการพยาบาลให้ดีขึ้น", reverse: false },
+    { id: "q4", trait: "O", text: "ฉันเป็นคนอยากรู้อยากเห็น ชอบค้นคว้าหาความรู้เพิ่มเติมเพื่อนำมาประยุกต์ใช้ในการทำงานหรือชีวิตประจำวัน", reverse: false },
+    { id: "q5", trait: "C", text: "ฉันมีความรับผิดชอบสูงและปฏิบัติตามงานที่ได้รับมอบหมายอย่างเคร่งครัดและตรงเวลา", reverse: false },
+    { id: "q6", trait: "C", text: "ในการปฏิบัติงาน เช่น การรับ-ส่งเวร ฉันสามารถสื่อสารข้อมูลอาการของผู้ป่วยได้อย่างครบถ้วน ถูกต้อง และเป็นระบบ", reverse: false },
+    { id: "q7", trait: "C", text: "ฉันมักจะวางแผน และเตรียมความพร้อม อย่างละเอียดรอบคอบที่สุดเท่าที่ฉันทำได้ ก่อนเริ่มงานหรือเริ่มลงมือทำอะไรบางอย่างเสมอ", reverse: false },
+    { id: "q8", trait: "C", text: "ฉันมีความมุ่งมั่นและมีวินัยในตนเองที่จะพัฒนาทักษะวิชาชีพพยาบาลให้ได้ตามมาตรฐานและเป้าหมายที่กำหนด", reverse: false },
+    { id: "q9", trait: "E", text: "ฉันเป็นคนร่าเริง ช่างพูด และมักจะเป็นฝ่ายเริ่มพูดคุยเพื่อสร้างความเป็นกันเองกับผู้ป่วย ญาติ และเพื่อนก่อนเสมอ", reverse: false },
+    { id: "q10", trait: "E", text: "เมื่อต้องทำงานร่วมกับทีมสหวิชาชีพ (เช่น แพทย์ เภสัชกร) ฉันสามารถแสดงความคิดเห็นและกล้าแสดงออกได้อย่างมั่นใจ", reverse: false },
+    { id: "q11", trait: "E", text: "ฉันรู้สึกมีพลังและกระตือรือร้น แม้จะต้องทำงานในวอร์ดที่มีความวุ่นวายและมีผู้ป่วยจำนวนมาก", reverse: false },
+    { id: "q12", trait: "E", text: "ฉันชอบการทำงานเป็นทีม ชอบการพบปะผู้คน และรู้สึกดีที่ได้มีปฏิสัมพันธ์กับเพื่อนร่วมงานในโรงพยาบาล", reverse: false },
+    { id: "q13", trait: "A", text: "ฉันช่วยเหลือทั้งเพื่อนร่วมงานและผู้ป่วยด้วยความเต็มใจเสมอ", reverse: false },
+    { id: "q14", trait: "A", text: "เมื่อมีความขัดแย้งในการทำงาน ฉันมักจะรับฟัง ยอมรับความคิดเห็นของผู้อื่น และเลือกใช้วิธีประนีประนอมเสมอ", reverse: false },
+    { id: "q15", trait: "A", text: "ฉันมีความไว้วางใจในความสามารถและเจตนาดีของผู้ป่วย และเพื่อนร่วมงาน", reverse: false },
+    { id: "q16", trait: "A", text: "ฉันปฏิบัติต่อผู้ป่วยและเพื่อนร่วมงานอย่างสุภาพ ถ่อมตน และไม่นำเอาความเหนื่อยล้ามาลงที่ผู้อื่น", reverse: false },
+    { id: "q17", trait: "N", text: "ฉันมักจะรู้สึกวิตกกังวลและเครียดได้ง่าย และมักจะตำหนิตนเองซ้ำแล้วซ้ำเล่าเมื่อเกิดความผิดพลาด แม้จะเป็นเพียงเรื่องเล็กๆ น้อยๆ", reverse: false },
+    { id: "q18", trait: "N", text: "บางครั้งฉันรู้สึกควบคุมอารมณ์หงุดหงิดหรือความฉุนเฉียวได้ยาก เมื่อสถานการณ์มีความกดดันสูงหรือเร่งด่วน", reverse: false },
+    { id: "q19", trait: "N", text: "ฉันรู้สึกเหนื่อยใจ ท้อแท้ หรือหมดกำลังใจได้ง่าย เมื่อถูกติติงหรือเผชิญกับความคาดหวังที่สูง", reverse: false },
+    { id: "q20", trait: "N", text: "ฉันรู้สึกหดหู่ หรืออารมณ์แปรปรวนบ่อยครั้ง", reverse: false },
   ]);
 
-  const CHOICE_PROFILE_MAP = /** @type {const} */ ({
-    A: {
-      emoji: "🐂",
-      title: 'คุณคือ "กระทิง" (The Bull) - D Style',
-      subtitle: "(ผู้นำจอมพลัง ผู้มุ่งมั่นพิชิตเป้าหมาย / Dominance)",
-    },
-    B: {
-      emoji: "🦅",
-      title: 'คุณคือ "อินทรี" (The Eagle) - I Style',
-      subtitle: "(นักวิสัยทัศน์ ผู้สร้างแรงบันดาลใจ / Influence)",
-    },
-    C: {
-      emoji: "🐭",
-      title: 'คุณคือ "หนู" (The Mouse) - S Style',
-      subtitle: "(ผู้ประสานใจ ผู้ดูแลด้วยความห่วงใย / Steadiness)",
-    },
-    D: {
-      emoji: "🧸",
-      title: 'คุณคือ "หมี" (The Bear) - C Style',
-      subtitle: "(นักวิเคราะห์ ผู้รักษากฎระเบียบ / Conscientiousness)",
-    },
+  const TRAIT_ORDER = /** @type {const} */ (["O", "C", "E", "A", "N"]);
+
+  const TRAIT_LABELS = /** @type {Record<TraitKey, { title: string, short: string }>} */ ({
+    O: { title: "การเปิดรับประสบการณ์ (Openness)", short: "O" },
+    C: { title: "ความมีจิตสำนึก (Conscientiousness)", short: "C" },
+    E: { title: "ความเป็นคนแสดงออก (Extraversion)", short: "E" },
+    A: { title: "ความเป็นมิตร (Agreeableness)", short: "A" },
+    N: { title: "ความไม่มั่นคงทางอารมณ์ (Neuroticism)", short: "N" },
   });
 
-  const STORAGE_KEY = "disc_quiz_v1_answers";
-
-  const DISC_PROFILE_MAP = /** @type {const} */ ({
-    D: { letter: "D", animal: "กระทิง", name: "Dominance" },
-    i: { letter: "I", animal: "อินทรี", name: "Influence" },
-    S: { letter: "S", animal: "หนู", name: "Steadiness" },
-    C: { letter: "C", animal: "หมี", name: "Conscientiousness" },
+  /** Short hints when score 16–20 (O/C/E/A) — expand in page copy as needed */
+  const HIGH_BAND_OCEA = /** @type {Record<Exclude<TraitKey, "N">, string>} */ ({
+    O: "คะแนนสูงในมิตินี้บ่งชี้การเปิดรับนวัตกรรม ความยืดหยุ่น และการเรียนรู้ในงานพยาบาล",
+    C: "คะแนนสูงสะท้อนความรับผิดชอบ การวางแผน และความเชื่อถือได้ในการปฏิบัติงาน",
+    E: "คะแนนสูงสะท้อนพลังงานทางสังคม ความกระตือรือร้น และการสื่อสารเชิงรุก",
+    A: "คะแนนสูงสะท้อนความเอื้อเฟื้อ การไว้วางใจ และการประนีประนอมในทีม",
   });
 
-  /**
-   * Blurb/emoji for DISC results — CHOICE_PROFILE_MAP was authored in A=D, B=i, C=S, D=C order.
-   * @param {DiscLetter} disc
-   */
-  function profileForDisc(disc) {
-    const key =
-      disc === "D" ? "A" :
-      disc === "i" ? "B" :
-      disc === "S" ? "C" : "D";
-    return CHOICE_PROFILE_MAP[/** @type {ChoiceLetter} */ (key)];
-  }
+  const LIKERT_SCALE = /** @type {const} */ ([
+    { v: 1, cap: "ไม่เห็นด้วยอย่างยิ่ง" },
+    { v: 2, cap: "ไม่เห็นด้วย" },
+    { v: 3, cap: "เฉยๆ" },
+    { v: 4, cap: "เห็นด้วย" },
+    { v: 5, cap: "เห็นด้วยอย่างยิ่ง" },
+  ]);
+
+  const STORAGE_KEY = "big5_nurse20_v1_answers";
+  const BIG5_RADAR_MAX = 20;
 
   /**
-   * Deterministic shuffle so option order varies by question but stays stable across reloads.
-   * @param {number} seed
-   * @template T
-   * @param {T[]} items
-   * @returns {T[]}
+   * @param {Record<string, number>} answers
+   * @returns {Record<TraitKey, { sum: number, n: number }>}
    */
-  function seededShuffle(seed, items) {
-    const arr = items.slice();
-    let s = seed >>> 0;
-    const rand = () => {
-      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-      return s / 4294967296;
-    };
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      const t = arr[i];
-      arr[i] = arr[j];
-      arr[j] = t;
+  function traitAggregates(answers) {
+    /** @type {Record<TraitKey, { sum: number, n: number }>} */
+    const out = { O: { sum: 0, n: 0 }, C: { sum: 0, n: 0 }, E: { sum: 0, n: 0 }, A: { sum: 0, n: 0 }, N: { sum: 0, n: 0 } };
+    for (const item of ITEMS) {
+      const val = answers[item.id];
+      if (typeof val !== "number" || val < 1 || val > 5) continue;
+      out[item.trait].sum += val;
+      out[item.trait].n += 1;
     }
-    return arr;
+    return out;
   }
 
   /**
-   * Extract question + options from the existing <ol class="questionnaire"> so the HTML remains the source of truth.
-   * @param {HTMLOListElement} ol
-   * @returns {{ question: string, options: Record<ChoiceLetter, string> }[]}
+   * @param {Record<string, number>} answers
+   * @returns {Record<TraitKey, number | null>}
    */
-  function parseQuestionnaire(ol) {
-    /** @type {{ question: string, options: Record<ChoiceLetter, string> }[]} */
-    const items = [];
+  function traitSums(answers) {
+    const agg = traitAggregates(answers);
+    /** @type {Record<TraitKey, number | null>} */
+    const sums = { O: null, C: null, E: null, A: null, N: null };
+    for (const t of TRAIT_ORDER) {
+      if (agg[t].n === 4) sums[t] = agg[t].sum;
+    }
+    return sums;
+  }
 
-    const liNodes = Array.from(ol.querySelectorAll(":scope > li"));
-    for (const li of liNodes) {
-      // Clone so we can strip the <ul> without mutating the original fallback content.
-      const clone = /** @type {HTMLLIElement} */ (li.cloneNode(true));
-      const ul = clone.querySelector("ul");
-      if (!ul) continue;
+  /**
+   * @param {TraitKey} trait
+   * @param {number | null} sum
+   * @returns {string}
+   */
+  function bandLabel(trait, sum) {
+    if (sum == null) return "—";
 
-      ul.remove();
-      const questionText = (clone.textContent || "").replace(/\s+/g, " ").trim();
+    if (trait === "N") {
+      if (sum >= 16) return "สูง — ความไม่มั่นคงทางอารมณ์สูง / เครียดง่าย — พักผ่อนและจัดการอารมณ์";
+      if (sum <= 10) return "ต่ำ–ปานกลาง — มั่นคงทางอารมณ์ (Emotional Stability) รับมือกับความกดดันได้ดี";
+      return "ปานกลาง — ระหว่างเสถียรภาพกับความไม่มั่นคงทางอารมณ์";
+    }
 
-      /** @type {Record<ChoiceLetter, string>} */
-      const options = /** @type {any} */ ({ A: "", B: "", C: "", D: "" });
+    if (sum >= 16) return `สูง — ${HIGH_BAND_OCEA[trait]}`;
+    if (sum >= 11) return "ปานกลาง — มีจุดเด่นและจุดที่พัฒนาได้ตามบริบทงาน";
+    return "ต่ำ–ปานกลาง (4–10) — โอกาสพัฒนาหรือบทบาทงานที่เน้นด้านอื่น";
+  }
 
-      const optionLis = Array.from(li.querySelectorAll("ul > li"));
-      for (const optLi of optionLis) {
-        const t = (optLi.textContent || "").replace(/\s+/g, " ").trim();
-        const m = t.match(/^([ABCD])\s*(.*)$/);
-        if (!m) continue;
-        /** @type {ChoiceLetter} */ const letter = /** @type {any} */ (m[1]);
-        options[letter] = (m[2] || "").trim();
+  /**
+   * @param {Record<string, number>} answers
+   * @returns {Record<TraitKey, number>}
+   */
+  function radarValues(answers) {
+    const agg = traitAggregates(answers);
+    /** @type {Record<TraitKey, number>} */
+    const out = { O: 0, C: 0, E: 0, A: 0, N: 0 };
+    for (const t of TRAIT_ORDER) {
+      if (agg[t].n === 4) out[t] = agg[t].sum;
+      else if (agg[t].n > 0) {
+        const mean = agg[t].sum / agg[t].n;
+        out[t] = Math.min(20, Math.round(mean * 4 * 10) / 10);
       }
-
-      // Validate we have 4 options.
-      if (options.A && options.B && options.C && options.D && questionText) {
-        items.push({ question: questionText, options });
-      }
     }
-
-    return items;
+    return out;
   }
 
   /**
-   * Pull style blurbs from the existing #styles cards, keyed by D/i/S/C.
-   * @returns {Record<DiscLetter, string>}
-   */
-  function readStyleCards() {
-    /** @type {Record<DiscLetter, string>} */
-    const map = /** @type {any} */ ({ D: "", i: "", S: "", C: "" });
-    const styles = document.getElementById("styles");
-    if (!styles) return map;
-
-    const cards = Array.from(styles.querySelectorAll(".card"));
-    for (const card of cards) {
-      const h = card.querySelector("h3");
-      if (!h) continue;
-      const title = (h.textContent || "").trim();
-      const key = title.startsWith("D") ? "D" :
-                  title.startsWith("i") ? "i" :
-                  title.startsWith("S") ? "S" :
-                  title.startsWith("C") ? "C" : null;
-      if (!key) continue;
-      // Keep innerHTML so bold labels remain.
-      map[/** @type {DiscLetter} */ (key)] = card.innerHTML;
-    }
-    return map;
-  }
-
-  /**
-   * Pull Top-2 pair blurbs from #pairs list like "D/i:".
-   * @returns {Record<string, string>}
-   */
-  function readPairBlurbs() {
-    /** @type {Record<string, string>} */
-    const map = {};
-    const pairs = document.getElementById("pairs");
-    if (!pairs) return map;
-
-    const lis = Array.from(pairs.querySelectorAll("li"));
-    for (const li of lis) {
-      const strong = li.querySelector("strong");
-      if (!strong) continue;
-      const k = (strong.textContent || "").replace(":", "").trim(); // e.g. "D/i"
-      const full = li.innerHTML;
-      if (k) map[k] = full;
-    }
-    return map;
-  }
-
-  /**
-   * @returns {Record<string, ChoiceLetter>}
+   * @returns {Record<string, number>}
    */
   function loadAnswers() {
     try {
@@ -203,20 +136,20 @@
       if (!raw) return {};
       const data = JSON.parse(raw);
       if (!data || typeof data !== "object") return {};
-      return /** @type {any} */ (data);
+      return /** @type {Record<string, number>} */ (data);
     } catch {
       return {};
     }
   }
 
   /**
-   * @param {Record<string, ChoiceLetter>} answers
+   * @param {Record<string, number>} answers
    */
   function saveAnswers(answers) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
     } catch {
-      // Ignore storage failures (private mode, etc.)
+      // ignore
     }
   }
 
@@ -226,40 +159,6 @@
     } catch {
       // ignore
     }
-  }
-
-  /**
-   * @param {number} score
-   * @returns {"ต่ำ"|"ปานกลาง"|"สูง"}
-   */
-  function intensity(score) {
-    if (score <= 5) return "ต่ำ";
-    if (score <= 9) return "ปานกลาง";
-    return "สูง";
-  }
-
-  /**
-   * @param {Record<DiscLetter, number>} scores
-   * @returns {{top: DiscLetter[], top2: DiscLetter[]}}
-   */
-  function topStyles(scores) {
-    const entries = /** @type {[DiscLetter, number][]} */ (Object.entries(scores));
-    entries.sort((a, b) => b[1] - a[1]);
-
-    const max = entries[0]?.[1] ?? 0;
-    const top = entries.filter(([, v]) => v === max).map(([k]) => k);
-
-    const top2 = entries.slice(0, 2).map(([k]) => k);
-    return { top, top2 };
-  }
-
-  /**
-   * @param {DiscLetter} key
-   * @returns {string}
-   */
-  function formatDiscLabel(key) {
-    const info = DISC_PROFILE_MAP[key];
-    return `${info.letter}(${info.animal})`;
   }
 
   /**
@@ -290,31 +189,12 @@
   }
 
   /**
-   * @param {Record<string, ChoiceLetter>} answers
-   * @param {number} total
-   * @returns {Record<ChoiceLetter, number>}
-   */
-  function calcChoiceCounts(answers, total) {
-    const counts = /** @type {Record<ChoiceLetter, number>} */ ({ A: 0, B: 0, C: 0, D: 0 });
-    for (let q = 1; q <= total; q++) {
-      const choice = answers[`q${q}`];
-      if (!choice) continue;
-      counts[choice] += 1;
-    }
-    return counts;
-  }
-
-  /** Max points per DISC dimension (one dimension per answered question). */
-  const DISC_RADAR_MAX = 24;
-
-  /**
-   * Draw a 4-axis radar for D / I / S / C scores (0–24 each).
    * @param {HTMLCanvasElement} canvas
-   * @param {Record<DiscLetter, number>} scores
+   * @param {Record<TraitKey, number>} values
    */
-  function renderDiscRadar(canvas, scores) {
-    const W = 360;
-    const H = 400;
+  function renderBig5Radar(canvas, values) {
+    const W = 380;
+    const H = 420;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
@@ -328,19 +208,17 @@
 
     const cx = W / 2;
     const cy = H / 2;
-    const labelPad = 52;
+    const labelPad = 56;
     const radius = Math.min(W, H) / 2 - labelPad;
 
-    /** Order: top D, right I, bottom S, left C */
-    const dims = /** @type {const} */ ([
-      { key: /** @type {DiscLetter} */ ("D"), letter: "D", emoji: "🐂", short: "กระทิง" },
-      { key: /** @type {DiscLetter} */ ("i"), letter: "I", emoji: "🦅", short: "อินทรี" },
-      { key: /** @type {DiscLetter} */ ("S"), letter: "S", emoji: "🐭", short: "หนู" },
-      { key: /** @type {DiscLetter} */ ("C"), letter: "C", emoji: "🧸", short: "หมี" },
-    ]);
+    const dims = TRAIT_ORDER.map((key) => ({
+      key,
+      letter: TRAIT_LABELS[key].short,
+      title: TRAIT_LABELS[key].title.split(" ")[0],
+    }));
 
     const n = dims.length;
-    const values = dims.map((d) => scores[d.key]);
+    const vals = dims.map((d) => values[d.key]);
     const angles = dims.map((_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / n);
 
     function pointAt(angle, dist) {
@@ -350,7 +228,6 @@
       };
     }
 
-    // Grid rings (25%, 50%, 75%, 100%)
     ctx.strokeStyle = "rgba(17, 24, 39, 0.08)";
     ctx.lineWidth = 1;
     for (let g = 1; g <= 4; g++) {
@@ -366,36 +243,35 @@
       ctx.stroke();
     }
 
-    // Axes
     ctx.strokeStyle = "rgba(17, 24, 39, 0.12)";
     for (let i = 0; i < n; i++) {
-      const p = pointAt(angles[i], radius);
+      const a = angles[i];
+      const p = pointAt(a, radius);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
     }
 
-    // Data polygon
-    const fillPts = values.map((v, i) => {
-      const t = Math.min(Math.max(v / DISC_RADAR_MAX, 0), 1);
-      return pointAt(angles[i], radius * t);
+    const fillPts = angles.map((a, i) => {
+      const t = BIG5_RADAR_MAX > 0 ? vals[i] / BIG5_RADAR_MAX : 0;
+      const d = Math.max(0, Math.min(1, t)) * radius;
+      return pointAt(a, d);
     });
 
+    ctx.fillStyle = "rgba(59, 130, 246, 0.22)";
+    ctx.strokeStyle = "rgba(37, 99, 235, 0.95)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    fillPts.forEach((p, i) => {
+    for (let i = 0; i < n; i++) {
+      const p = fillPts[i];
       if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
-    });
+    }
     ctx.closePath();
-    ctx.fillStyle = "rgba(59, 130, 246, 0.22)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(37, 99, 235, 0.85)";
-    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Vertices + scores
-    ctx.font = '600 12px "Noto Sans Thai", system-ui, sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (let i = 0; i < n; i++) {
@@ -405,70 +281,53 @@
       ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
       ctx.fill();
 
-      const outer = pointAt(angles[i], radius + 26);
+      const outer = pointAt(angles[i], radius + 28);
       ctx.fillStyle = "rgba(17, 24, 39, 0.88)";
       ctx.font = '700 13px "Noto Sans Thai", system-ui, sans-serif';
-      ctx.fillText(`${dims[i].emoji} ${dims[i].letter}`, outer.x, outer.y - 8);
+      ctx.fillText(dims[i].letter, outer.x, outer.y - 10);
       ctx.font = '600 11px "Noto Sans Thai", system-ui, sans-serif';
       ctx.fillStyle = "rgba(17, 24, 39, 0.55)";
-      ctx.fillText(dims[i].short, outer.x, outer.y + 6);
+      ctx.fillText(dims[i].title, outer.x, outer.y + 6);
       ctx.font = '700 12px "Noto Sans Thai", system-ui, sans-serif';
       ctx.fillStyle = "rgba(37, 99, 235, 0.95)";
-      ctx.fillText(String(values[i]), outer.x, outer.y + 20);
+      ctx.fillText(String(vals[i]), outer.x, outer.y + 22);
     }
   }
 
   /**
    * @param {HTMLElement} resultsEl
-   * @param {Record<DiscLetter, number>} scores
-   * @param {Record<ChoiceLetter, number>} choiceCounts
+   * @param {Record<TraitKey, number | null>} sums
+   * @param {Record<TraitKey, number>} radarVals
    * @param {boolean} complete
    */
-  /**
-   * @param {HTMLElement} resultsEl
-   * @param {Record<DiscLetter, number>} scores
-   * @param {Record<ChoiceLetter, number>} choiceCounts
-   * @param {boolean} complete
-   * @param {Record<string, string>} pairBlurbs
-   */
-  function renderResults(resultsEl, scores, choiceCounts, complete, pairBlurbs) {
-    const { top: topDisc, top2 } = topStyles(scores);
-    const choiceTotal = choiceCounts.A + choiceCounts.B + choiceCounts.C + choiceCounts.D;
-    const topProfiles = topDisc.map((d) => profileForDisc(d));
-    const topLabel = topDisc.length === 1
-      ? `${topProfiles[0].emoji} ${topProfiles[0].title}`
-      : `ผลเสมอ: ${topDisc.map((d, i) => `${topProfiles[i].emoji} ${formatDiscLabel(d)}`).join(" / ")}`;
-    const topSubtitle = topDisc.length === 1 ? topProfiles[0].subtitle : "";
-
-    const pairKey = `${top2[0]}/${top2[1]}`;
-    const pairHtml = pairBlurbs[pairKey];
+  function renderResults(resultsEl, sums, radarVals, complete) {
+    const scoreRows = TRAIT_ORDER.map((t) => {
+      const s = sums[t];
+      const display = s == null ? "—" : String(s);
+      const band = bandLabel(t, s);
+      return `
+        <div class="nbk-score" role="listitem">
+          <span class="k">${escapeHtml(TRAIT_LABELS[t].title)}</span>
+          <span class="v">${display}<span class="nbk-band">${escapeHtml(band)}</span></span>
+        </div>`;
+    }).join("");
 
     resultsEl.innerHTML = `
       <div class="nbk-card">
         <div class="nbk-card-head">
           <h4>สรุปผล</h4>
           <div class="nbk-status ${complete ? "is-complete" : ""}">
-            ${complete ? "ครบแล้ว" : "ตอบให้ครบ 24 ข้อ"}
+            ${complete ? "ครบ 20 ข้อ" : "ตอบให้ครบทุกข้อ (คะแนนรวมต่อมิติแสดงเมื่อครบ 4 ข้อในมิตินั้น)"}
           </div>
         </div>
 
-        <div class="nbk-scores" role="list" aria-label="คะแนนมิติ DISC (D I S C)">
-          <div class="nbk-score" role="listitem"><span class="k">🐂 D(กระทิง)</span><span class="v">${scores.D}</span></div>
-          <div class="nbk-score" role="listitem"><span class="k">🦅 I(อินทรี)</span><span class="v">${scores.i}</span></div>
-          <div class="nbk-score" role="listitem"><span class="k">🐭 S(หนู)</span><span class="v">${scores.S}</span></div>
-          <div class="nbk-score" role="listitem"><span class="k">🧸 C(หมี)</span><span class="v">${scores.C}</span></div>
+        <div class="nbk-scores" role="list" aria-label="คะแนน Big Five ตามมิติ (สูงสุด 20 ต่อมิติ)">
+          ${scoreRows}
         </div>
 
         <div class="nbk-meta">
-          ${topSubtitle ? `<div class="nbk-meta-line">${topSubtitle}</div>` : ""}
-          <div class="nbk-meta-line">จำนวนข้อที่ตอบแล้ว: ${choiceTotal}/24</div>
-        </div>
-
-        <div class="nbk-explain">
-          <div class="nbk-explain-title">คู่สไตล์ (Top 2)</div>
-          <div>
-            ${pairHtml ? pairHtml : `<strong>${pairKey}:</strong> ${formatDiscLabel(top2[0])} / ${formatDiscLabel(top2[1])}`}
-          </div>
+          <div class="nbk-meta-line">มิติละ 4 ข้อ คะแนนรวม 4–20 ต่อมิติ • ใช้เป็นแนวทางสะท้อนตนเอง ไม่ใช่การวินิจฉัย</div>
+          <div class="nbk-meta-line">การอ่านคะแนน Big Five เพื่อปรับสมดุล: อ้างอิงได้จากแนวทางการสะท้อนตนเอง (เช่น Jordan Peterson) — ไม่ใช่เกณฑ์ทางคลินิก</div>
         </div>
 
         <div class="nbk-actions">
@@ -482,32 +341,30 @@
         </div>
       </div>
 
-      <div class="nbk-radar-card" aria-label="กราฟเรดาร์คะแนนมิติ DISC">
+      <div class="nbk-radar-card" aria-label="กราฟเรดาร์คะแนนมิติ Big Five">
         <div class="nbk-radar-head">
-          <h4 class="nbk-radar-title">โปรไฟล์ DISC</h4>
-          <p class="nbk-radar-caption">เปรียบเทียบ 4 มิติจากคำตอบที่มีอยู่ (สเกลข้อละ 1 คะแนน สูงสุด ${DISC_RADAR_MAX} ต่อมิติ)</p>
+          <h4 class="nbk-radar-title">โปรไฟล์ Big Five</h4>
+          <p class="nbk-radar-caption">เปรียบเทียบ 5 มิติ (O C E A N) สเกล 0–20 ต่อมิติ — ขอบนอก = 20</p>
         </div>
         <div class="nbk-radar-canvas-wrap">
-          <canvas id="nbk-disc-radar" role="img" aria-label="เรดาร์ D I S C"></canvas>
+          <canvas id="nbk-big5-radar" role="img" aria-label="เรดาร์ O C E A N"></canvas>
         </div>
       </div>
     `;
 
-    const radarCanvas = /** @type {HTMLCanvasElement | null} */ (resultsEl.querySelector("#nbk-disc-radar"));
+    const radarCanvas = /** @type {HTMLCanvasElement | null} */ (resultsEl.querySelector("#nbk-big5-radar"));
     if (radarCanvas) {
-      requestAnimationFrame(() => renderDiscRadar(radarCanvas, scores));
+      requestAnimationFrame(() => renderBig5Radar(radarCanvas, radarVals));
     }
   }
 
   /**
    * @param {HTMLElement} quizMount
-   * @param {{ question: string, options: Record<ChoiceLetter, string> }[]} items
+   * @param {QuizItem[]} items
    */
   function buildQuizUI(quizMount, items) {
     const stored = loadAnswers();
-    const pairBlurbs = readPairBlurbs();
-
-    /** @type {Record<string, ChoiceLetter>} */
+    /** @type {Record<string, number>} */
     const answers = { ...stored };
 
     const sheet = document.createElement("div");
@@ -516,10 +373,10 @@
       <div class="nbk-paper">
         <header class="nbk-header">
           <div class="nbk-title">
-            <div class="nbk-badge">DISC</div>
+            <div class="nbk-badge">Big-5</div>
             <div>
-              <div class="nbk-title-main">แบบสอบถาม 24 ข้อ</div>
-              <div class="nbk-title-sub">เลือก 1 ตัวเลือกต่อข้อ • ระบบจะคำนวณอัตโนมัติ</div>
+              <div class="nbk-title-main">แบบสอบถาม 20 ข้อ</div>
+              <div class="nbk-title-sub">ประเมิน 1–5 ต่อข้อ • คำนวณคะแนนรวมต่อมิติอัตโนมัติ</div>
             </div>
           </div>
         </header>
@@ -529,7 +386,7 @@
             <div class="nbk-grid" id="nbk-grid"></div>
           </form>
 
-          <div class="nbk-results" id="nbk-results" aria-label="ผลคะแนน DISC"></div>
+          <div class="nbk-results" id="nbk-results" aria-label="ผลคะแนน Big Five"></div>
         </div>
       </div>
     `;
@@ -553,63 +410,50 @@
       const qtextId = `nbk-qtext-${qNum}`;
       block.setAttribute("role", "group");
       block.setAttribute("aria-labelledby", qtextId);
+
+      const likertCells = LIKERT_SCALE.map(({ v, cap }) => {
+        const id = `nbk-${item.id}-${v}`;
+        return `
+          <label class="nbk-likert-opt" for="${id}">
+            <input id="${id}" type="radio" name="${item.id}" value="${v}" />
+            <span class="nbk-likert-num">${v}</span>
+            <span class="nbk-likert-cap">${escapeHtml(cap)}</span>
+          </label>`;
+      }).join("");
+
       block.innerHTML = `
         <div class="nbk-q-head" id="${qtextId}">
           <span class="nbk-qno">${qNum}</span>
-          <span class="nbk-qtext">${escapeHtml(item.question)}</span>
+          <span class="nbk-qtext">${escapeHtml(item.text)}</span>
         </div>
-        <div class="nbk-opts">
-          ${seededShuffle(qNum * 7919 + 104729, /** @type {ChoiceLetter[]} */ (["A", "B", "C", "D"])).map((letter) => {
-            const l = /** @type {ChoiceLetter} */ (letter);
-            const val = escapeHtml(item.options[l]);
-            const id = `nbk-q${qNum}-${l}`;
-            return `
-              <label class="nbk-opt" for="${id}">
-                <input id="${id}" type="radio" name="q${qNum}" value="${l}" />
-                <span class="nbk-opt-letter">${l}</span>
-                <span class="nbk-opt-text">${val}</span>
-              </label>
-            `;
-          }).join("")}
+        <p class="nbk-likert-legend">1 = ไม่เห็นด้วยอย่างยิ่ง … 5 = เห็นด้วยอย่างยิ่ง</p>
+        <div class="nbk-likert-opts" role="radiogroup" aria-labelledby="${qtextId}">
+          ${likertCells}
         </div>
       `;
       grid.appendChild(block);
 
-      // Restore choice
-      const storedChoice = answers[`q${qNum}`];
-      if (storedChoice) {
-        const input = block.querySelector(`input[value="${storedChoice}"]`);
+      const storedVal = answers[item.id];
+      if (typeof storedVal === "number") {
+        const input = block.querySelector(`input[value="${storedVal}"]`);
         if (input) /** @type {HTMLInputElement} */ (input).checked = true;
       }
 
       block.addEventListener("change", (ev) => {
         const t = ev.target;
         if (!(t instanceof HTMLInputElement)) return;
-        if (t.name !== `q${qNum}`) return;
-
-        /** @type {ChoiceLetter} */ const choice = /** @type {any} */ (t.value);
-        answers[`q${qNum}`] = choice;
+        if (t.name !== item.id) return;
+        const v = Number(t.value);
+        if (v >= 1 && v <= 5) answers[item.id] = v;
         saveAnswers(answers);
         update();
       });
     }
 
-    function calcScores() {
-      /** @type {Record<DiscLetter, number>} */
-      const scores = { D: 0, i: 0, S: 0, C: 0 };
-      for (let q = 1; q <= items.length; q++) {
-        const choice = answers[`q${q}`];
-        if (!choice) continue;
-        const discByQuestion = QUESTION_SCORING[q - 1];
-        const disc = discByQuestion ? discByQuestion[choice] : CHOICE_TO_DISC[choice];
-        scores[disc] += 1;
-      }
-      return scores;
-    }
-
     function isComplete() {
-      for (let q = 1; q <= items.length; q++) {
-        if (!answers[`q${q}`]) return false;
+      for (const it of items) {
+        const v = answers[it.id];
+        if (typeof v !== "number" || v < 1 || v > 5) return false;
       }
       return true;
     }
@@ -618,18 +462,19 @@
       const dots = Array.from(sheet.querySelectorAll(".nbk-dot"));
       for (const dot of dots) {
         const q = Number(dot.getAttribute("data-q") || "0");
-        const filled = !!answers[`q${q}`];
+        const id = items[q - 1]?.id;
+        const filled = id ? typeof answers[id] === "number" : false;
         dot.classList.toggle("is-filled", filled);
       }
     }
 
     function update() {
-      const scores = calcScores();
-      renderResults(resultsEl, scores, calcChoiceCounts(answers, items.length), isComplete(), pairBlurbs);
+      const sums = traitSums(answers);
+      const radarVals = radarValues(answers);
+      renderResults(resultsEl, sums, radarVals, isComplete());
       updateDots();
     }
 
-    // Actions (send/copy/reset)
     quizMount.addEventListener("click", async (ev) => {
       const t = ev.target;
       if (!(t instanceof HTMLElement)) return;
@@ -638,68 +483,59 @@
 
       const action = btn.getAttribute("data-action");
       if (action === "reset") {
-        for (let q = 1; q <= items.length; q++) delete answers[`q${q}`];
+        for (const it of items) delete answers[it.id];
         clearAnswers();
-        // Clear UI checks
-        for (const input of Array.from(sheet.querySelectorAll("input[type=radio]"))) {
+        for (const input of Array.from(sheet.querySelectorAll('input[type="radio"]'))) {
           /** @type {HTMLInputElement} */ (input).checked = false;
         }
         update();
       }
 
       if (action === "copy") {
-        const scores = calcScores();
-        const choiceCounts = calcChoiceCounts(answers, items.length);
-        const { top: topDisc } = topStyles(scores);
-        const topProfiles = topDisc.map((d) => profileForDisc(d));
-        const topText = topDisc.length === 1
-          ? `${topProfiles[0].emoji} ${topProfiles[0].title}`
-          : `ผลเสมอ: ${topDisc.map((d, i) => `${topProfiles[i].emoji} ${formatDiscLabel(d)}`).join(" / ")}`;
+        const sums = traitSums(answers);
+        const parts = TRAIT_ORDER.map((k) => {
+          const s = sums[k];
+          return `${k}=${s == null ? "—" : s}`;
+        });
         const text =
-          `DISC (24 ข้อ)
-` +
-          `ตัวเลือก A–D (ดิบ): A=${choiceCounts.A}, B=${choiceCounts.B}, C=${choiceCounts.C}, D=${choiceCounts.D}
-` +
-          `${topText}
-` +
-          `คะแนน DISC: D(กระทิง)=${scores.D}, I(อินทรี)=${scores.i}, S(หนู)=${scores.S}, C(หมี)=${scores.C}
-`;
-
+          `Big Five — พยาบาล (20 ข้อ, Likert 1–5)\n` +
+          `${parts.join(", ")}\n` +
+          `รายละเอียดมิติ: แต่ละมิติ 4–20 คะแนน\n`;
 
         try {
           await navigator.clipboard.writeText(text);
           flashStatus(resultsEl, "คัดลอกแล้ว");
         } catch {
-          // Fallback: prompt
           window.prompt("คัดลอกข้อความนี้:", text);
         }
       }
 
       if (action === "send") {
-        const scores = calcScores();
-        const choiceCounts = calcChoiceCounts(answers, items.length);
-        const { top: topDisc } = topStyles(scores);
-        const topProfiles = topDisc.map((d) => profileForDisc(d));
-        const resultSummary =
-          topDisc.length === 1
-            ? `${topProfiles[0].emoji} ${topProfiles[0].title}`
-            : `ผลเสมอ: ${topDisc.map((d, i) => `${topProfiles[i].emoji} ${formatDiscLabel(d)}`).join(" / ")}`;
+        if (!isComplete()) {
+          flashStatus(resultsEl, "กรุณาตอบให้ครบ 20 ข้อก่อนส่ง");
+          return;
+        }
 
-        const cfg = window.DISC_OWNER_SUBMISSION_CONFIG;
-        const submitFn = window.submitDiscSubmissionToOwner;
+        const sums = traitSums(answers);
+        if (sums.O == null || sums.C == null || sums.E == null || sums.A == null || sums.N == null) {
+          flashStatus(resultsEl, "ข้อมูลคะแนนไม่ครบ");
+          return;
+        }
+
+        const resultSummary = TRAIT_ORDER.map((k) => `${k}=${sums[k]}`).join(", ");
+
+        const cfg = window.BIG5_OWNER_SUBMISSION_CONFIG;
+        const submitFn = window.submitBig5SubmissionToOwner;
         if (cfg && cfg.enabled && typeof submitFn === "function") {
           /** @type {Record<string, unknown>} */
           const row = {
             submitted_at: new Date().toISOString(),
             result_summary: resultSummary,
-            disc_score_d: scores.D,
-            disc_score_i: scores.i,
-            disc_score_s: scores.S,
-            disc_score_c: scores.C,
-            raw_choice_a: choiceCounts.A,
-            raw_choice_b: choiceCounts.B,
-            raw_choice_c: choiceCounts.C,
-            raw_choice_d: choiceCounts.D,
+            big5_score_o: sums.O,
+            big5_score_c: sums.C,
+            big5_score_e: sums.E,
+            big5_score_a: sums.A,
+            big5_score_n: sums.N,
             answers: { ...answers },
           };
           const sent = await submitFn(row);
@@ -708,9 +544,9 @@
           } else if (sent.error !== "not_configured") {
             flashStatus(resultsEl, "ส่งผลไม่สำเร็จ โปรดลองอีกครั้ง");
           }
+        } else {
+          flashStatus(resultsEl, "ยังไม่ได้ตั้งค่า webhook (ดู README)");
         }
-
-        window.open("https://www.menti.com/alozdhwzj9id?source=qr-page", "_blank", "noopener,noreferrer");
       }
     });
 
@@ -718,7 +554,6 @@
   }
 
   /**
-   * Escape HTML to prevent injection when using innerHTML templating.
    * @param {string} s
    * @returns {string}
    */
@@ -740,28 +575,16 @@
     badge.className = "nbk-toast";
     badge.textContent = msg;
     resultsEl.appendChild(badge);
-    setTimeout(() => badge.remove(), 1200);
+    setTimeout(() => badge.remove(), 2000);
   }
 
   function init() {
     document.documentElement.classList.add("js");
 
-    const mount = document.getElementById("disc-quiz");
+    const mount = document.getElementById("big5-quiz");
     if (!mount) return;
 
-    const ol = document.querySelector("#survey .questionnaire");
-    if (!(ol instanceof HTMLOListElement)) {
-      mount.innerHTML = `<div class="card"><p>ไม่พบรายการคำถาม (questionnaire) ในหน้าเว็บ</p></div>`;
-      return;
-    }
-
-    const items = parseQuestionnaire(ol);
-    if (!items.length) {
-      mount.innerHTML = `<div class="card"><p>อ่านคำถามไม่สำเร็จ โปรดตรวจรูปแบบ HTML ของแบบสอบถาม</p></div>`;
-      return;
-    }
-
-    buildQuizUI(mount, items);
+    buildQuizUI(mount, ITEMS);
   }
 
   if (document.readyState === "loading") {

@@ -6,8 +6,8 @@
    * @param {Record<string, unknown>} row Same shape as app.js (plus optional webhookToken).
    * @returns {Promise<{ ok: boolean, error?: string }>}
    */
-  async function submitDiscSubmissionToOwner(row) {
-    const cfg = window.DISC_OWNER_SUBMISSION_CONFIG;
+  async function submitBig5SubmissionToOwner(row) {
+    const cfg = window.BIG5_OWNER_SUBMISSION_CONFIG;
     if (!cfg || !cfg.enabled || !cfg.webhookUrl || !String(cfg.webhookUrl).trim()) {
       return { ok: false, error: "not_configured" };
     }
@@ -47,5 +47,5 @@
     }
   }
 
-  window.submitDiscSubmissionToOwner = submitDiscSubmissionToOwner;
+  window.submitBig5SubmissionToOwner = submitBig5SubmissionToOwner;
 })();
