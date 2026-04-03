@@ -907,6 +907,7 @@ thead {
 }
 
 .big5-quiz .nbk-btn-send {
+  display: none;
   border-color: rgba(22, 163, 74, 0.42);
   background: linear-gradient(180deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95));
   color: #ffffff;
